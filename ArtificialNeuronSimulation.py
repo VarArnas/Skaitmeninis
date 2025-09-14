@@ -18,33 +18,32 @@ def GenerateInputs():
     return classZero, classOne
 
 
-def NeuralNeuron(input):
-    # Randomly initialize weights (w1, w2) and bias (b) for the neuron
-    w1, w2, b = np.random.uniform(-10, 10, 3)
-    logits = []
+def NeuralNeuron(input, activation, params):
+    w1, w2, b = params
+    preds = []
 
-    # Compute the linear combination (weighted sum) for each input point
     for x, y in input:
+        # Compute the linear combination (weighted sum) for each input point
         a = x*w1 + y*w2 + b
-        logits.append(a)
 
-    # Return neuron outputs + weights and bias used
-    return logits, w1, w2, b
+        # Classify point using threshold (step) or sigmoid activation
+        if activation == 'threshold':
+            preds.append(1 if a >= 0 else 0)
+        elif activation == 'sigmoid':
+            preds.append(1 if sigmoid(a) >= 0.5 else 0)
+        else:
+            raise ValueError("activation function not valid")
+
+    # Return neuron outputs
+    return preds
 
 def sigmoid(logit):
     # Sigmoid activation function maps any value into (0,1)
     return 1 / (1 + np.exp(-logit))
 
-def IsPredictionCorrect(logits, groundTruths, activationFunc):
-    # Classify points using threshold (step) or sigmoid activation
-    if activationFunc == 'threshold':
-        preds =  [1 if a >= 0 else 0 for a in logits]
-    elif activationFunc == 'sigmoid':
-        preds = [1 if sigmoid(a) >= 0.5 else 0 for a in logits]
-    else:
-        raise ValueError("activation function not valid")
-    
+def IsPredictionCorrect(allPoints, groundTruths, activationFunc, params):    
     # Check if all predictions match the ground-truth labels
+    preds = NeuralNeuron(allPoints, activationFunc, params)
     return all(p == gt for p, gt in zip(preds, groundTruths))
 
 def DrawPoints(axes, classZero, classOne):
@@ -105,15 +104,16 @@ allPoints = np.vstack((classZero, classOne))
 
 # Randomly try weights until we find 3 that perfectly separate the classes
 while len(sigWeights) < 3 and len(threshWeights) < 3:
-    logits, w1, w2, b = NeuralNeuron(allPoints)
+    # Randomly initialize weights (w1, w2) and bias (b) for the neuron
+    params = np.random.uniform(-10, 10, 3)
 
     # Check for perfect classification with threshold activation
-    if IsPredictionCorrect(logits, groundTruths, 'threshold') and len(threshWeights) < 3:
-        threshWeights.append((w1, w2, b))
+    if IsPredictionCorrect(allPoints, groundTruths, 'threshold', params) and len(threshWeights) < 3:
+        threshWeights.append(params)
 
     # Check for perfect classification with sigmoid activation
-    if IsPredictionCorrect(logits, groundTruths, 'sigmoid') and len(sigWeights) < 3:
-        sigWeights.append((w1, w2, b))
+    if IsPredictionCorrect(allPoints, groundTruths, 'sigmoid', params) and len(sigWeights) < 3:
+        sigWeights.append(params)
 
 # Print out the weights and biases that achieved perfect classification
 for (w01, w02, b0), (w11, w12, b1) in zip(threshWeights, sigWeights):
